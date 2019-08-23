@@ -1,0 +1,866 @@
+########################################################################################
+#########################################################################################
+ 
+                                 ORPHAN PKS CATALOG
+
+########################################################################################
+#########################################################################################
+
+
+# The updated catalog of orphan polyketide synthases (PKS) and further analysis was performed for the review article
+# "Evolution and Diversity of Assembly-Line Polyketide Synthases"
+# written by Aleksandra Nivina (a,b), Kai P. Yuet (a,b), Jake Hsu (b,c) and Chaitan Khosla (a,b,c)
+# a Department of Chemistry; b Stanford ChEM-H; c Department of Chemical Engineering; Stanford University, Stanford, CA 94305, USA
+# for Chemical Reviews journal, in 2019.
+
+# More details can be found here: <http://web.stanford.edu/group/orphan_pks/>
+
+# This work was largely based on the one performed for the original article
+# "Computational identification and analysis of orphan assembly-line polyketide synthases"
+# written by Robert V O’Brien (1), Ronald W Davis (2,3), Chaitan Khosla (1,2,4) and Maureen E Hillenmeyer (2,3)
+# 1 Department of Chemistry, Stanford University, Stanford, CA, USA; 2 Department of Biochemistry, Stanford University, Stanford, CA, USA; 
+# 3 Stanford Genome Technology Center, 855 South California Avenue, Palo Alto, CA, USA; and 4 Chemical Engineering, Stanford University, Stanford, CA, USA
+# published in The Journal of Antibiotics in 2014.
+
+
+# Copyright (C) 2019 Maureen Hillenmeyer, Jake Hsu, Aleksandra Nivina
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# To see the GNU General Public License, Plesase see 
+# <http://www.gnu.org/licenses/>.
+#
+# Part of the work was performed on Stanford Sherlock Cluster.
+# The rest was performed locally.
+
+
+#########################################################################################
+#########################################################################################
+# The first part of the analysis was performed using scripts from 2013.
+
+
+##########################################################################################################################
+# *****
+
+# Install miniconda
+# Downloaded NCBI blast databases May 26 2018
+# ftp://ftp.ncbi.nlm.nih.gov/blast/db/
+# 2.7.1
+
+# Blast consensus sequences against these dbs
+#	1. Env_nt
+#	2. Htgs
+#	3. Nt
+#	4. Other_genomic
+#	5. Refseq_genomic
+#	6. Est_others
+#	7. Gss
+#	8. Patnt
+#   9. Tsa_nt
+#	10. Sts
+
+# WGS is no longer a blast db, SRA section explained later
+
+#Perform Blast 
+# module load biology
+# module load ncbi-blast+/
+# cd /scratch/PI/khosla/Orphan_PKS/blast_dbs/sts
+# tblastn -query /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/Manual/KSSignatureConsensusPKSDB.fasta -db /scratch/PI/khosla/Orphan_PKS/blast_dbs/nt/nt -out KSSignature_nt.blastout.100000alignments.evalue100 -num_alignments 100000 -seg no -evalue 100 
+
+# Repeat for 10 databases
+
+# Workaround for WGS:
+
+#Apparently there's just too much data on wgs to search all wgs since 2016
+#Workaround: ftp://ftp.hgc.jp/pub/mirror/ncbi/blast/WGS_TOOLS/README_BLASTWGS.txt 
+#Use taxid2wgs to get wgs for a taxonomic ID 
+#2 = bacteria
+#Then use sra-tblastn to blast (downloaded from SRA Tool box)
+
+# taxid2wgs
+#module load biology
+#module load ncbi-blast+/
+#module load perl
+#perl /scratch/PI/khosla/Orphan_PKS/blast_dbs/WGS/taxid2wgs.pl -title "Archaea WGS" -alias_file archaea-wgs 2157
+
+#sra-tblastn
+/scratch/PI/khosla/Orphan_PKS/blast_dbs/WGS/sratoolkit.2.9.0-centos_linux64/bin/sra-tblastn -query /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/Manual/KSSignatureConsensusPKSDB.fasta -db /scratch/PI/khosla/Orphan_PKS/blast_dbs/WGS/archaea-wgs -out KSSignature_wgs_archaea.blastout.100000alignments.evalue100 -num_alignments 100000 -seg no -evalue 100 
+
+#Repeat for bacteria and eukaryota
+
+
+# Cluster KSs
+# force them to have at least 3kb between HSPs to count as a unique one. I'm getting overlapping HSPSs that are counting as 2 separate KSs.
+
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/clusterKSs.pl /scratch/PI/khosla/Orphan_PKS/tblastn_result/KSSignature_env_nt.blastout.100000alignments.evalue100 >KSSignature_clusters.env_nt.max.20000.min.3000.bp.apart
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/clusterKSs.pl /scratch/PI/khosla/Orphan_PKS/tblastn_result/KSSignature_htgs.blastout.100000alignments.evalue100 >KSSignature_clusters.htgs.max.20000.min.3000.bp.apart
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/clusterKSs.pl /scratch/PI/khosla/Orphan_PKS/tblastn_result/KSSignature_nt.blastout.100000alignments.evalue100 >KSSignature_clusters.nt.max.20000.min.3000.bp.apart
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/clusterKSs.pl /scratch/PI/khosla/Orphan_PKS/tblastn_result/KSSignature_other_genomic.blastout.100000alignments.evalue100 >KSSignature_clusters.other_genomic.max.20000.min.3000.bp.apart
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/clusterKSs.pl /scratch/PI/khosla/Orphan_PKS/tblastn_result/KSSignature_refseq_genomic.blastout.100000alignments.evalue100 >KSSignature_clusters.refseq_genomic.max.20000.min.3000.bp.apart
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/clusterKSs.pl /scratch/PI/khosla/Orphan_PKS/tblastn_result/KSSignature_sts.blastout.100000alignments.evalue100 >KSSignature_clusters.sts.max.20000.min.3000.bp.apart
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/clusterKSs.pl /scratch/PI/khosla/Orphan_PKS/tblastn_result/KSSignature_patnt.blastout.100000alignments.evalue100 >KSSignature_clusters.patnt.max.20000.min.3000.bp.apart
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/clusterKSs.pl /scratch/PI/khosla/Orphan_PKS/tblastn_result/KSSignature_tsa_nt.blastout.100000alignments.evalue100 >KSSignature_clusters.tsa_nt.max.20000.min.3000.bp.apart
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/clusterKSs.pl /scratch/PI/khosla/Orphan_PKS/tblastn_result/KSSignature_gss.blastout.100000alignments.evalue100 >KSSignature_clusters.gss.max.20000.min.3000.bp.apart
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/clusterKSs.pl /scratch/PI/khosla/Orphan_PKS/tblastn_result/KSSignature_est_others.blastout.100000alignments.evalue100 >KSSignature_clusters.est_others.max.20000.min.3000.bp.apart
+
+
+# How many total NCBI records had something returned?
+cat KSSignature_clusters.env_nt.max.20000.min.3000.bp.apart \
+KSSignature_clusters.htgs.max.20000.min.3000.bp.apart \
+KSSignature_clusters.nt.max.20000.min.3000.bp.apart \
+KSSignature_clusters.other_genomic.max.20000.min.3000.bp.apart \
+KSSignature_clusters.refseq_genomic.max.20000.min.3000.bp.apart \
+KSSignature_clusters.wgs.max.20000.min.3000.bp.apart  \
+KSSignature_clusters.sts.max.20000.min.3000.bp.apart \
+KSSignature_clusters.patnt.max.20000.min.3000.bp.apart \
+KSSignature_clusters.tsa_nt.max.20000.min.3000.bp.apart \
+KSSignature_clusters.gss.max.20000.min.3000.bp.apart \
+KSSignature_clusters.est_others.max.20000.min.3000.bp.apart \
+> KSSignature_clusters.11dbs.max.20000.min.3000.bp.apart
+
+cut -f 1 KSSignature_clusters.10dbs.nowgs.max.20000.min.3000.bp.apart |sort -u |wc
+241196  241196 3654522
+
+
+
+
+######################################################################################################
+# *****
+# Filter genomes with at least 3 KSs
+
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/filterGenomes.pl KSSignature_clusters.env_nt.max.20000.min.3000.bp.apart 3 > KSSignature_clusters.env_nt.max.20000.min.3000.bp.apart.min3
+cut -f 1 KSSignature_clusters.env_nt.max.20000.min.3000.bp.apart.min3 |sort -u |wc
+
+Repeat for 11 dbs
+
+
+
+
+Many dbs are empty
+
+ Env_nt 227     227    3406
+ Htgs     6       6      66
+ Nt  1848    1848   20477
+ Other_genomic  2166    2166   34998
+ Refseq_genomic 20211   20211  343396
+ Est_others     0       0       0
+ Gss     0       0       0
+ Patnt   329     329    3597
+ Tsa_nt    0       0       0
+ Sts     0       0       0
+ Archaea WGS     0       0       0
+ Eukaryota WGS     0       0       0
+ Bacteria WGS 20370   20370  305576
+
+1. Env_nt
+2. Htgs
+3. Nt
+4. Other_genomic
+5. Refseq_genomic
+6. Est_others
+7. Gss
+8. Patnt
+9. Tsa_nt
+10. Sts
+11. Archaea WGS
+12. Eukaryota WGS
+13. Bacteria WGS
+
+# *****
+# cat the 11db min3 KSSignature_clusters files into one:
+
+cat KSSignature_clusters.env_nt.max.20000.min.3000.bp.apart.min3 \
+KSSignature_clusters.htgs.max.20000.min.3000.bp.apart.min3 \
+KSSignature_clusters.refseq_genomic.max.20000.min.3000.bp.apart.min3 \
+KSSignature_clusters.nt.max.20000.min.3000.bp.apart.min3 \
+KSSignature_clusters.other_genomic.max.20000.min.3000.bp.apart.min3 \
+KSSignature_clusters.patnt.max.20000.min.3000.bp.apart.min3 \
+KSSignature_clusters.sts.max.20000.min.3000.bp.apart.min3 \
+KSSignature_clusters.tsa_nt.max.20000.min.3000.bp.apart.min3 \
+KSSignature_clusters.est_others.max.20000.min.3000.bp.apart.min3 \
+KSSignature_clusters.gss.max.20000.min.3000.bp.apart.min3 \
+KSSignature_clusters.archaea.max.20000.min.3000.bp.apart.min3 \
+KSSignature_clusters.eukaryota.max.20000.min.3000.bp.apart.min3 \
+KSSignature_clusters.bacteria.max.20000.min.3000.bp.apart.min3 \
+> KSSignature_clusters.11dbs.max.20000.min.3000.bp.apart.min3
+
+ cat KSSignature_clusters.11dbs.max.20000.min.3000.bp.apart.min3 | wc
+51856 1338746 7832547
+
+ cut -f 1 KSSignature_clusters.11dbs.max.20000.min.3000.bp.apart.min3 | sort -u | wc
+  43074   43074  677562
+
+#Maureen had 3219 at this point. 
+
+# ****************************************************************************************************** 
+# 
+# Run on all 11dbs, min3 results
+Do Fetch Genbank
+perl scripts/fetchGenbanks.pl KSSignature_clusters.10dbs.max.20000.min.3000.bp.apart.min3 gbwithparts
+you may need to install the Bio::DB::EUtilities module) 
+Cpan XML::SimpleModule
+XML::SAX::Expat 
+
+#######################################################################################333
+#Cannot sudo on Sherlock
+# Need singularity 
+
+module load singularity
+module load perl
+singularity exec --bind $PI_SCRATCH bioperl-jake.simg perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/fetchGenbanks.pl /scratch/PI/khosla/Orphan_PKS/clusters/KSSignature_clusters.10dbs.max.20000.min.3000.bp.apart.min3 gbwithparts
+
+#Note that fetching Genbanks is not actually used for antiSMASH
+#antiSMASH returns weird results when we feed genbank files
+#Use fasta instead
+
+
+Separate into multiple files
+perl scripts/separateSequenceFiles.pl KSSignature_clusters.patnt.max.20000.min.3000.bp.apart.min3.gbwithparts genbank genbank.patnt.min3
+
+
+##########################################################################################################################
+# *****
+# Antismash v4.1 
+
+#INSTALL
+
+export PATH=$PATH:/home/users/jakehsu/miniconda3/bin
+
+conda create -n antismash antismash
+source activate antismash
+download-antismash-databases
+source deactivate antismash
+
+#Have to convert Genbanks to Fasta for antiSMASH
+
+cd /scratch/PI/khosla/Orphan_PKS/gbfiles/genbank.patnt.min3.newset1/
+ml perl
+
+for i in *; do
+	perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/gb2fasta.pl /scratch/PI/khosla/Orphan_PKS/gbfiles/genbank.patnt.min3.newset1/$i /scratch/PI/khosla/Orphan_PKS/fasta_files/patnt/"${i::-3}".fasta)
+done
+
+#Repeat for all databases 
+
+
+#####################################################################################################################
+Email antismash team
+Dear antiSMASH user,
+> I am trying to run standalone antiSMASH 4.2, and I am having trouble
+> getting the detailed annotations to appear. When I run the same
+> accession on the web version, I can see the detailed annotations
+> (Ketosynthase, ketoreductase etc) for the clusters, but I cannot get
+> this functionality to appear on the standalone antismash. Is there an
+> option I need to enable? I am running the web version of antismash
+> without checking any of the additional features and I still can see
+> the detailed annotation.
+What version of HMMer do you have installed? There is a known issue
+with the new HMMer version 3.2 that came out some weeks ago.
+Downgrading to HMMer version 3.1 should fix this.
+Hope this helps,
+Kai
+
+#Check current packages installed:
+Conda list -n antismash
+
+#Indeed hmmer is 3.2
+
+Conda remove -n antismash hmmer
+#Annoyingly this also removes antismash 4.1
+
+Conda install -n antismash -c biocore hmmer
+Consta install -n antismash -c biocore antismash
+#Put antismash back
+
+#Works like  a charm
+
+
+
+##################################################################################################################
+#Perform antismash
+cd /scratch/PI/khosla/Orphan_PKS/fasta_files/env_nt
+
+PATH=$PATH:/scratch/PI/khosla/Orphan_PKS/miniconda3/bin/
+source activate antismash
+
+for i in *; do
+	antismash $i --outputfolder /scratch/PI/khosla/Orphan_PKS/antismash_result_env_nt/"${i::-6}" --enable t1pks,nrps,transatpks
+done
+
+#Repeat for all databases
+
+Check to see if svg exists
+ls antismash2.7dbs.min3.pksnrps/*/svg/genecluster1.svg |wc
+Check to see genbank exists:
+ls antismash2.7dbs.min3.pksnrps/*/*.gbk |wc
+
+Some common errors:
+ERROR   03/08 15:16:36   Input does not contain contigs larger than minimum size of 1000 bp.
+Skip
+
+Some sequences won't generate svg no matter how many times I try
+Convert gb to fasta and try again. 
+
+ 
+############################################################################################################
+Extract interesting clusters
+Build description file:
+
+First need accession_desc file
+perl scripts/build_accession_desc.pl  KSSignature_clusters.7dbs.max.20000.min.3000.bp.apart.min3 >antismash2.7dbs.min3.results/KSSignature_clusters.7dbs.max.20000.min.3000.bp.apart.min3.accession_desc.txt
+
+Original code doesn't work; I had to change a bit to make it work:
+Build_accession_desc_jh.pl
+
+
+
+#In the meantime, get dates for the genbank files
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/getSequenceDates.pl /scratch/PI/khosla/Orphan_PKS/gbfiles/genbank.env_nt.min3.newset1 > /scratch/PI/khosla/Orphan_PKS/gbfiles/accession_dates_env_nt.txt
+
+
+##############################################################################################################
+Extracting interesting clusters from all databases; here Patnt shown as example.
+
+####################################
+
+1. Get interesting clusters (at least 3 KS)
+
+
+Start from 329 genbank results
+
+Get interesting cluster:
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/extractInterestingAntismashClusters_jh.pl \
+/scratch/PI/khosla/Orphan_PKS/desc_files/KSSignature_clusters.patnt.max.20000.min.3000.bp.apart.min3.accession_desc.txt \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/patnt \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest 3 \
+> /scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/extractInterestingAntismashClusters_patnt.output
+
+Count: 
+327 interesting clusters
+
+
+
+2. Get cluster sequences
+Get cluster seqs
+
+module load system
+module load singularity
+module load perl
+singularity exec --bind $PI_SCRATCH bioperl-jake.simg perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/getClusterSequence.pl \
+/scratch/PI/khosla/Orphan_PKS/gbfiles/genbank.patnt.min3.newset1 \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/interestingClusters.patnt.txt \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/patnt \
+> /scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/interest_cluster_seq_patnt.txt
+
+3. Find synonyms
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/findRedundantClusters.pl \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/interest_cluster_seq_patnt.txt \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/patnt \
+> /scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/interestingClusterSynonyms.patnt.txt
+
+
+4. Remove redundant 
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/removeRedundantClusters.pl \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/interestingClusters.patnt.txt \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/interestingClusterSynonyms.patnt.txt \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/patnt \
+/scratch/PI/khosla/Orphan_PKS/desc_files/KSSignature_clusters.patnt.max.20000.min.3000.bp.apart.min3.accession_desc.txt \
+/scratch/PI/khosla/Orphan_PKS/gbfiles/earliest_patnt.txt \
+> /scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/interestingClustersNonRedundant.patnt.txt
+
+149 remaining
+
+5. Make summary cluster table (nonredundant)
+
+singularity exec --bind $PI_SCRATCH bioperl-jake.simg perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/makeClusterTableSummary_jh.pl \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/interestingClustersNonRedundant.patnt.txt \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/patnt \
+/scratch/PI/khosla/Orphan_PKS/gbfiles/genbank.patnt.min3.newset1 \
+scratch/PI/khosla/Orphan_PKS/gbfiles/earliest_patnt.txt \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/interest_cluster_seq_patnt.txt \
+> /scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/clusterTableNonRedundant.patnt.txt 
+
+
+6. Consolidate similar
+
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/identifySimilarClusters.pl \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/clusterTableNonRedundant.patnt.txt \
+> /scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/SimilarClusters.patnt.txt
+
+
+7. Cluster table nonsimilar non redundant 
+perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/makeClusterTableSummaryNonSimilar.pl \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/clusterTableNonRedundant.patnt.txt \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/SimilarClusters.patnt.txt \
+/scratch/PI/khosla/Orphan_PKS/desc_files/KSSignature_clusters.patnt.max.20000.min.3000.bp.apart.min3.accession_desc.txt \
+/scratch/PI/khosla/Orphan_PKS/gbfiles/earliest_patnt.txt \
+>/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/clusterTableNonRedundantNonSimilar.patnt.txt
+
+Count = 149
+
+
+8. Extract cluster seqs
+
+module load system
+module load singularity
+module load perl
+
+singularity exec --bind $PI_SCRATCH bioperl-jake.simg perl /scratch/PI/khosla/Orphan_PKS/OrphanPKSscripts_MH/scripts/extractClusterSeqs_jh.pl \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/antismash_interest/clusterTableNonRedundantNonSimilar.patnt.txt \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/patnt \
+/scratch/PI/khosla/Orphan_PKS/antismash_from_fasta/clusterSeqs.patnt
+
+
+#########################################################################################
+#########################################################################################
+# Starting from here, the workflow differs from the one performed in 2013.
+
+
+#########################################################################################
+#########################################################################################
+######### Extracting biosynthetic enzyme protein sequences from GenBank to fasta ########
+# Submitting a batch job that exectutes the python script extracting_protein_seq.py.
+# We have to make sure to add Cluster Number to the name of the record in fasta files, so that they can be correctly named by blastp at a later step.
+
+> cd /scratch/groups/khosla/Orphan_PKS/19FebExtractFasta
+> sbatch extracting_protein_seq.slurm
+
+# The python script takes GenBank files generated by antiSMASH
+# located in /scratch/groups/khosla/Orphan_PKS/antismash_from_fasta/6dbs_prescreen/ACCESSION/ACCESSION.cluster00N.gbk
+# and writes the resulting files into /scratch/groups/khosla/Orphan_PKS/New_approach/prot_fasta_withClusterN_for_blastp/ACCESSION.cluster00N.fasta
+
+
+
+#############################################################################
+#############################################################################
+######### Copying antiSMASH outputs from scratch into home directory ########
+
+> cd /scratch/groups/khosla/Orphan_PKS/19FebExtractFasta
+> sbatch copying_antismash_files_to_HOME.slurm
+
+
+
+################################################
+################################################
+######### Generating a GenBank database ########
+# Generating a GenBank database to perform 1-vs-all blastp queries.
+
+> ml biology
+> ml ncbi-blast+
+> makeblastdb -in /scratch/groups/khosla/Orphan_PKS/New_approach/prot_fasta_withClusterN_for_blastp/*.fasta -dbtype prot -out /scratch/groups/khosla/Orphan_PKS/New_approach/all_prot_withClusterN_blast_db
+
+
+
+#################################
+#################################
+######### Running blastp ########
+# We have 6987 fasta files, so we have to run 6987 1-vs-all blastp queries. We do this using job arrays.
+# Each array can support up to 1000 jobs, so we have to submit 7 job arrays.
+# Task numbers in each array go from 0 to N, so we have to modify each slurm file, so that blastp is performed on different files in each array.
+# A user can only submit 1 job array of 1000 tasks, so I submitted them sequentially. Each array takes ~2.5 hours, so the entire blastp takes 1 day.
+# The outputs go to /scratch/groups/khosla/Orphan_PKS/New_approach/blastp_scores/ACCESSION.cluster00N.fasta.blastp.out
+
+> cd /scratch/groups/khosla/Orphan_PKS/22FebBlastP/output/
+> sbatch --array=0-999 ../scripts/blastp_array.sh
+> sbatch --array=0-999 ../scripts/blastp_array_500.sh
+> sbatch --array=0-999 ../scripts/blastp_array_999.sh
+> sbatch --array=0-999 ../scripts/blastp_array_1998.sh
+> sbatch --array=0-999 ../scripts/blastp_array_2997.sh
+> sbatch --array=0-999 ../scripts/blastp_array_3996.sh
+> sbatch --array=0-999 ../scripts/blastp_array_4995.sh
+> sbatch --array=0-992 ../scripts/blastp_array_5994.sh
+
+
+
+#############################################
+#############################################
+######### Calculating query lengths #########
+# Because we now have to calculate everything per amino acid length and not per nucleotide length, we have to modify the clusterTable to reflect the amino acid length.
+
+> cd /scratch/groups/khosla/Orphan_PKS/24FebClusterLengths/
+> sbatch cluster_lengths.slurm
+
+# The resulting clusterTable goes to
+# /scratch/groups/khosla/Orphan_PKS/antismash_from_fasta/clusterTableNRNS/clusterTableNonRedundantNonSimilar.6dbs.prot_len.txt
+
+
+
+##############################################
+##############################################
+######### Parsing blastp output files ########
+# I've modified the intial script to correctly account for overlapping protein similarities,
+# and also to be able to work with 1-vs-all blast outputs instead of 1-vs-1 outputs.
+# The corrected_parse_blastp.pl script can iterate over several blastp.out files and write the results into the same parsed file.
+# I ran 6 slurm jobs, each of them executes up to 5 scripts in parallel, and each script works on 250 blastp.out files. Takes around 2 hours.
+# The results go to:
+# /scratch/groups/khosla/Orphan_PKS/New_approach/blastp_scores/parsed_scores.0-250 etc.
+
+>cd /scratch/groups/khosla/Orphan_PKS/26FebParseBlastP/output
+> sbatch ../scripts/parsing0.slurm
+> sbatch ../scripts/parsing1.slurm
+> sbatch ../scripts/parsing2.slurm
+> sbatch ../scripts/parsing3.slurm
+> sbatch ../scripts/parsing4.slurm
+> sbatch ../scripts/parsing5.slurm
+> sbatch ../scripts/parsing6.slurm
+
+
+
+##############################################################################################################
+##############################################################################################################
+######### Checking that we have a blastp score for each combination of 2 clusters, in both directions ########
+
+> cd /scratch/groups/khosla/Orphan_PKS/2MarDistanceMatrix
+> sbatch checking_missing_data_final.slurm
+
+# The results go to:
+# /scratch/groups/khosla/Orphan_PKS/2MarDistanceMatrix/List_of_cluster_pairs_with_no_scores_final.txt,
+# /scratch/groups/khosla/Orphan_PKS/2MarDistanceMatrix/List_of_unexpected_cluster_pairs_final.txt.
+# The file List_of_cluster_pairs_with_no_scores.txt is the one we're interested in. It is empty, as expected.
+
+
+
+###########################################################
+###########################################################
+######### Creating one file with all parsed scores ########
+# Right now, parsed scores are in parsed_scores.initial, parsed_scores.additional, parsed_scores.yet_additional, parsed_scores.missing.
+# I am getting the score from these files in reverse order (first, from parsed_scores.missing, all the way to parsed_scores.initial, and keep the first score that I find because it's more reliable)
+> cd /scratch/groups/khosla/Orphan_PKS/2MarDistanceMatrix
+> sbatch assembling_scores.slurm
+
+# The result goes to
+# /scratch/groups/khosla/Orphan_PKS/New_approach/parsed_scores.all_final
+
+
+
+
+
+###############################################################
+###############################################################
+######### Finding redundant clusters and chaining them ########
+# This script finds redundant clusters based on their similarity scores
+
+> cd /scratch/groups/khosla/Orphan_PKS/2MarDistanceMatrix
+> sbatch findredundant_and_chain.slurm
+
+# The results go to:
+# /scratch/groups/khosla/Orphan_PKS/New_approach/parsed_scores.all_final.nonredundant_chained_new.cutoff0.9
+# /scratch/groups/khosla/Orphan_PKS/New_approach/parsed_scores.all_final.redundant_chained_new.cutoff0.9
+# There are 2487 non-redundant clusters and 1064 sets of redundant clusters: total of 3551 clusters, with 30% of all unique clusters having redundancies.
+
+
+
+#####################################################
+#####################################################
+######### Getting the correct domain numbers ########
+# It turns out that the original script mis-counted the number of C domains:
+# it took these numbers from svg file, where C domain and C-terminal docking domains are labeled in a very similar way.
+# I wrote a script that gets the numbers of domains from GenBank files, where this information is correct as annotated by antiSMASH.
+
+> cd /scratch/groups/khosla/Orphan_PKS/2MarDomainNumbers
+> sbatch counting_domains.slurm
+
+# The results go to:
+# /scratch/groups/khosla/Orphan_PKS/New_approach/ClusterTables/clusterTableNonRedundant.6dbs.correct_domains.txt
+# /scratch/groups/khosla/Orphan_PKS//New_approach/ClusterTables/clusterTableNonRedundantNonSimilar.6dbs.prot_len.correct_domains.txt
+
+
+
+###############################################
+###############################################
+######### Creating the distance matrix ########
+# This script reads all similarity scores and makes a distance matrix.
+
+> cd /scratch/groups/khosla/Orphan_PKS/2MarDistanceMatrix
+> sbatch pairs_to_matrix.slurm
+
+# The resulting data matrix updates the previous file:
+# /scratch/groups/khosla/Orphan_PKS/New_approach/dataMatrix_blastp.txt
+# NOTE: even clusters considered redundant are in the distance matrix.
+
+
+
+##################################################
+##################################################
+######### Creating the catalog of NRNSNSS ########
+# The problem with the previous catalogs (NR, NRNS) is that they list the main cluster as being redundant and/or sequence similar to itself (see the original cluster file). 
+# I want to avoid that, so I went through all accessions and cluster numbers to remove repetitions.
+# NOTE: In cases where a cluster that was deemed redundant to another main one, had identical clusters (=same sequence or same species+architecture), then these clusters were also added as redundant to the main cluster, into the last column.
+# I re-wrore the original Perl script in Python and run on my local computer.
+
+> python makeClusterTableSummaryNonSequenceSimilar.py -cluster_tableNRNS ../11_counting_domains/clusterTableNonRedundantNonSimilar.6dbs.prot_len.correct_domains.txt -nonredundant_file ../12_plotting_dendrograms/parsed_scores.all_final.nonredundant_chained_new.cutoff0.9.txt  -redundant_set_file ../12_plotting_dendrograms/parsed_scores.all_final.redundant_chained_new.cutoff0.9.txt -output_f ./
+
+# The result goes to:
+# clusterTableNonRedundantNonSimilarNonSequenceSimilar.6dbs.prot_len.correct_domains.txt
+
+
+
+####################################
+####################################
+######### Making a timeline ########
+# I want to not only show the timeline for the # of clusters, but also for the percentage of redundant clusters
+
+
+######## ClusterTables for different years ########
+# First, on my computer, I created a clusterFile for each year, from 1993 to 2018. It is organized in the following way:
+# Main_accession Main_clusternum Main_year : Accession Clusternum Date; Accession Clusternum Date; ...
+# Where Main refers to the cluster for which we calculated the distances, and all the others are redundant.
+
+> cd ~/Local
+> python making_clusterfiles_by_year.py
+
+# The results are in:
+# /scratch/groups/khosla/Orphan_PKS/New_approach/Timeline/ClusterTablesTimeline/clusterTable1994.nonidentical.txt etc.
+# There are two types of output clusterFiles:
+# One called ClusterTableYEAR.txt, where all clusters with non-identical IDs are listed (both "Redundant" and "Similar" from the original ClusterTable);
+# Another called ClusterTableYEAR.nonidentical.txt, where only similar but non-identical clusters with non-identical IDs are listed (only "Similar" from the original ClusterTable); we use this file to retrieve years.
+
+
+######## DistanceMatrices for different years ########
+# Next, I created distance matrices for each year:
+
+> cd /scratch/groups/khosla/Orphan_PKS/7MarTimeline
+> sbatch creating_distance_matrices_1.slurm
+> sbatch creating_distance_matrices_2.slurm
+> sbatch creating_distance_matrices_3.slurm
+> sbatch creating_distance_matrices_4.slurm
+> sbatch creating_distance_matrices_5.slurm
+
+# The results go to:
+# /scratch/groups/khosla/Orphan_PKS/7MarTimeline/DistanceMatrices/distanceMatrix1994.txt etc.
+
+
+######## ParsedScores for different years ########
+# Next, I created a file with parsed scores for clusters relevant for that year
+
+> cd /scratch/groups/khosla/Orphan_PKS/7MarTimeline
+> sbatch generating_parsedscores.slurm
+
+# The results go to:
+# /scratch/groups/khosla/Orphan_PKS/7MarTimeline/ParsedScores/parsed_scores.1994 etc.
+
+
+######## Looking for redundancies in scores and chaining for different years ########
+# Next, for each year, I made a list of redundant and non-redundant clusters based on parsed scores:
+
+> cd /scratch/groups/khosla/Orphan_PKS/7MarTimeline
+> sbatch chaining_1.slurm
+> sbatch chaining_2.slurm
+> sbatch chaining_3.slurm
+> sbatch chaining_4.slurm
+> sbatch chaining_5.slurm
+
+# The results go to:
+# /scratch/groups/khosla/Orphan_PKS/7MarTimeline/ParsedScores/parsed_scores.1994.redundant_chained.cutoff0.9.txt and 
+# /scratch/groups/khosla/Orphan_PKS/7MarTimeline/ParsedScores/parsed_scores.1994.non-redundant_chained.cutoff0.9.txt , etc.
+
+
+######## Making graphs for the number of non-redundant clusters, and the percentage of clusters with redundancies ########
+# To plot the cluster number graph, I'm taking the number of unique (non-redundant clusters + number of redundant sets) clusters, for each year.
+# To plot the redundant percentage, I'm dividing the number of redundant sets by the number of unique clusters, for each year.
+
+> cd /scratch/groups/khosla/Orphan_PKS/7MarTimeline
+> sbatch creating_timeline.slurm
+
+# The results go to:
+# Timeline_unique_redundant_clusters.txt (numbers)
+# Timeline_unique_redundant_clusters.png (graph)
+
+
+
+#########################################
+#########################################
+######### Finding known clusters ########
+# We want to extract PKS-containing clusters from MIBig, which wee consider as "known" clusters.
+# We then look through our data and try to find whch clusters correspond to these "known" ones.
+# We also want to look at cluster annotations, where some of them are moted as "known" clusters.
+
+######### Finding known PKS clusters in MIBig ########
+# First, we look at MIBig 1.4 json files to extract all clusters: not only PKS, but also  NRPS, RiPPs etc.
+# We will match relevant clusters to our list of PKSs later.
+# Running this on my local computer (have a problem loading json for python on Sherlock)
+
+> python extracting_all_from_json.py
+
+# The output goes to:
+# all_clusters_mibig.txt
+
+
+######### Matching known clusters from MIBig to our list of clusters ########
+# Next, we want to match clusters from MIBig to clusters from the ClusterTable (before finding redundants).
+# The json files only have NCBI accession numbers but not the coordinates of clusters within that accession, which sometimes makes it difficult to match them.
+# However, we can access this information in the GenBank files (they have the same MiBig number as jason files).
+
+> python finding_all_correspondencies_from_MIBig.py
+
+# The result goes to:
+# known_all_clusters_from_MIBig.txt
+# There is a total of 262 clusters matched.
+# In some cases, one cluster is matched to several MIBig clusters. This is OK, for example lankacidin and lankamycin clusters are located close together (on a plasmid), which is why our algorithm considered them to be one cluster. However, we matched 2 separate MIBig clusters to them.
+
+
+######### Looking for clusters annotated as known ########
+# For some PKS clusters, their description mentions if they are known. We want to list known clusters matched to to clusters from the ClusterTable (before finding redundants)
+# I do it on my local computer.
+
+> python finding_PKS_correspondencies_from_clusterTable.py
+
+# The result goes to:
+# known_clusters_from_clusterTable.txt
+# Some of them have to be manually modified, because it's difficult to correctly parse all product names.
+
+# The result goes to
+# known_clusters_from_clusterTable_edited.txt
+# There is a total of 273 clusters identified this way. Some of them overlap with the list extracted from MIBig.
+
+
+######### Assembling the list of knowm clusters from both sources ######## 
+# I do it on my local computer
+
+> python assembling_correspondencies.py
+
+# The results go to:
+# known_clusters_MIBig_and_clusterTable.txt
+# There is a total of 329 known clusters.
+# Then I manually edit for typos etc.
+
+# The result goes to:
+# known_clusters_MIBig_and_clusterTable_edited.txt
+# Again, this list is matched to clusters from the ClusterTableNR
+
+
+######### Matching this list to clusters that appear in the dendrogram (NRNS) ########
+
+> python matching_correspondencies_to_all_leaves_edited.py
+
+# The result goes to:
+# known_clusters_MIBig_and_clusterTable_matched_to_all_leaves.txt
+# There is a total of 324 known clusters matched to clusters from the clusterTableNRNS.
+# After slight editing for a prettier output, the result goes to:
+# known_clusters_MIBig_and_clusterTable_matched_to_all_edited.txt
+
+
+######### Matching this list to "main" clusters in the dendrogram (NRNSNSS) ########
+
+> python matching_correspondencies_to_main_leaves.py
+
+# The result goes to:
+# known_clusters_MIBig_and_clusterTable_matched_to_main.txt
+# After slight editing for a prettier output, the result goes to:
+# known_clusters_MIBig_and_clusterTable_matched_to_main_edited.txt
+# There is a total of 297 known clusters matched to "main" clusters from the final clusterTable.
+
+
+
+
+##########################################
+##########################################
+######### Plotting the dendrogram ########
+
+
+######### Plotting the dendrogram for distinct clusters, with known clusters highlighted ########
+# This python script takes the distance matrix file, the list of redundant and non-redundant clusters, and performs clustering only for distinct entries. 
+# As in the 2013 paper,we are using the McQuitty method (also called "weighted" in scipy) for clustering.
+# Clusters with redundancies are marked "seen more than once".
+# This script shows names of known clusters and highlights them in red on the dendrogram of either all clusters, or distinc clusters. 
+# The list of known distinct clusters is:
+# known_clusters_MIBig_and_clusterTable_matched_to_main_edited.txt 
+# I do it on my local computer (takes ~5min)
+
+> python plotting_dendrograms.py -show_all No -show_known Yes -only_show_known No -show_accession Yes -show_species Yes -show_date No -show_type Yes -show_domains Yes -color_known Yes
+
+
+
+
+######################################################################################
+######################################################################################
+######### Calculating the maximum similarity of orphan clusters to known ones ########
+# The idea is to calculate, for each orphan cluster, the maximum similarity to any known one.
+# This gives an idea of how different this cluster is from anything we know.
+
+######### What's potentially homologous? #########
+# First, I want to know which similarity value corresponds to homologous clusters.
+# For this, on my local computer I'm calculating the minimum, maximum, mean and median scores 
+# for 9 known macrolactone PKSs (those highligted in the dendrogram):
+# "KU568466 1", "AY118081 1",       "AB089954 1", "AY509120 1", "MF033535 1", "KP997155 1", "AR897801 1", "EU220288 1", "AF016585 1"
+# Aldgamycin,   Dihydrochalcomycin, Mycinamicin,  Chalcomycin,  Tylactone,    Rosamicin     Midecamycin,  Angolamycin,  Niddamycin
+
+> python similarity_between_macrolide_synthases.py
+
+# Maximum similarity is 0.894249915417625
+# Minimum similarity is 0.464731240263178
+# Mean similarity is 0.5580726197600219
+# Median similarity is 0.527244523314885
+# I consider that clusters with > 50% similarity could be potentially homologs
+
+
+######### Does it hold true for other clusters? #########
+# Also, I took sets of 10 cluster pairs with <50% similarity and 10 cluster pairs with >50% similarity.
+# I manually looked at alignments to see if clusters with >50% similarity are indeed likely to be homologs.
+# Selecting random pairs of clusters and extracting ORFs
+
+> python similarity_to_known_clusters_distinct_picking_pairs.py
+
+# After manual inspection, this seems to hold true.
+
+
+######### How similar are orphan clusters from 2018 to known clusters? #########
+# Second, for each orphan among 6987 clusters from 2018 I'm calculating the maximum similarity scores agains known clusters, on my local computer:
+
+> python similarity_to_known_clusters.py
+
+# The result is the histogram, both in normal and log scale:
+# Similarity_to_known_clusters.pdf
+# Similarity_to_known_clusters_log.pdf
+# 12% are redundant with a known cluster, 44% are potentially homologous to a known cluster, and 44% are truly orphan.
+
+
+######### How similar are distinct orphan clusters from 2018 to distinct known clusters? #########
+# Third, I'm also interested to calculate this similarity only for non-redundant orphan clusters.
+# Basically, I only keep the 302 non-redundant known clusters and calculate those maximum similarity scores to them, for 3249 distinct orphan clusters.
+
+> python Similarity_to_known_clusters_distinct.py
+
+# The result is the histogram, both in normal and log scale:
+# Similarity_to_known_clusters_distinct.pdf
+# Similarity_to_known_clusters_log_distinct.pdf
+# (No redundants, because we excluded all redundants) 48% are potentially homologous to a known cluster and 52% are truly orphan.
+
+
+######### How similar are orphan clusters to known clusters, along the years? #########
+# Fourth, I want to see how this changed along the years. For this, I will need:
+# known_clusters_MIBig_and_clusterTable_edited.txt
+# known_clusters_MIBig_and_clusterTable_matched_to_all_edited.txt
+# known_clusters_MIBig_and_clusterTable_matched_to_main_edited.txt
+# I'm matching clustres to either of those. Technically, I should have constructed a file matched to all leaves for a particular year.
+# Otherwise, an orphan cluster that has been selected as main at the step NR->NRNS could be considered as known.
+# However, I expect only very few of these cases. 
+# Indeed, this happens only twice: when I compare the numbers for 2018 that I got this way to the numbers that I got the "propoer" way (see above),
+# there are 331 known clusters found with this approximate method, compared to actual 329.
+# Doing it a "proper" way would be time-consuming and for all intents and purposes the results can be expected to be the same.
+# So, I use both these files to look for known.
+# I will use the distance matrices that I previously created for each year (see above, available on Sherlock)
+
+> cd cd /scratch/groups/khosla/Orphan_PKS/26MarDistanceTimeline/
+> sbatch similarity_distinct.slurm
+
+# The result goes to:
+# Orphan_cluster_similarities_to_known_timeline_numbers.txt
+# Orphan_distinct_cluster_similarities_to_known_timeline_numbers.txt
+
+# Then, I plot these results on my local computer:
+
+> python timeline_orphan_clusters.py
+
+# The result is the graph
+# Numbers_of_orphan_clusters_timeline.pdf
+# Since we don't have all sequences from 2018, the graph seems to plateau after 2017.
+

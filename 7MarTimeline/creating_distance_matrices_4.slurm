@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH --output=matrix_%j.out
+#SBATCH --error=matrix_%j.err
+#SBATCH -p normal,hns
+#SBATCH --time=500
+#SBATCH --nodes=1
+#SBATCH -c 5
+
+#!/bin/bash
+
+cd /scratch/groups/khosla/Orphan_PKS/7MarTimeline
+
+perl creating_distance_matrices_by_year.pl /scratch/groups/khosla/Orphan_PKS/New_approach/parsed_scores.all_final ./ClusterTables/clusterTable2009.nonidentical.txt ./DistanceMatrices/distanceMatrix2009.txt &
+
+perl creating_distance_matrices_by_year.pl /scratch/groups/khosla/Orphan_PKS/New_approach/parsed_scores.all_final ./ClusterTables/clusterTable2010.nonidentical.txt ./DistanceMatrices/distanceMatrix2010.txt &
+
+perl creating_distance_matrices_by_year.pl /scratch/groups/khosla/Orphan_PKS/New_approach/parsed_scores.all_final ./ClusterTables/clusterTable2011.nonidentical.txt ./DistanceMatrices/distanceMatrix2011.txt &
+
+perl creating_distance_matrices_by_year.pl /scratch/groups/khosla/Orphan_PKS/New_approach/parsed_scores.all_final ./ClusterTables/clusterTable2012.nonidentical.txt ./DistanceMatrices/distanceMatrix2012.txt &
+
+perl creating_distance_matrices_by_year.pl /scratch/groups/khosla/Orphan_PKS/New_approach/parsed_scores.all_final ./ClusterTables/clusterTable2013.nonidentical.txt ./DistanceMatrices/distanceMatrix2013.txt &
+
+wait
+
+exit 0
